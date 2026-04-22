@@ -30,6 +30,9 @@ dist/
 .idea/
 .vscode/
 
+# Local-only: symlink to iCloud-backed Stanford coursework folder
+/Stanford
+
 # Data and runs
 data/
 runs/
