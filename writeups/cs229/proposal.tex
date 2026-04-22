@@ -1,0 +1,77 @@
+% The template is adapted for CS229 project proposal
+\documentclass{article}
+
+\usepackage[preprint,nonatbib]{cs229}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{amsmath}
+\usepackage{fancyhdr}       % for headers and footers
+\usepackage{lipsum}
+% Setup header
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyhead[C]{CS229 Project Proposal}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Custom title format for one-page document without the proposal title
+\renewcommand{\maketitle}{
+  \begin{center}
+    {\bf \large Micro-Transformer: A From-Scratch Autograd and Attention Engine for Character-Level Language Modeling}\\
+    \vspace{0.1cm}
+    {\bf Category:} General Machine Learning\\
+    \vspace{0.1cm}
+    {\bf Team Members:} Manikanta Harsha Nadimpalli, Luis Blanco Hoyos\\
+    \vspace{0.1cm}
+    {\bf Emails (SUNet):} nmharsha@stanford.edu, blancol@stanford.edu\\
+    \vspace{0.2cm}
+  \end{center}
+}
+
+\begin{document}
+
+\maketitle
+
+\section{Motivation}
+Our primary motivation is pedagogical: we want to understand the architectural mechanics of modern language models by building the autograd machinery ourselves rather than treating it as a black box, and then use that machinery to study a concrete empirical question: how do LayerNorm placement and residual connections shape gradient magnitudes through attention during training? While PyTorch exposes hooks (\texttt{register\_full\_backward\_hook}) and functional Jacobians (\texttt{torch.autograd.functional.jacobian}) that could surface much of this data, building forward and backward passes ourselves over batched tensors gives us both the conceptual clarity to motivate the ablation and exact, low-overhead access to intermediate Jacobian statistics without reliance on framework internals. The from-scratch build is the instrument; the gradient-flow ablation is the scientific contribution.
+
+\section{Methods}
+The framework is built in three layers. First, an autograd engine: a reverse-mode directed acyclic graph over tensor-valued nodes, extending Karpathy's scalar \textit{micrograd}~\cite{karpathy2020micrograd} to batched tensors with broadcasting. Second, a small set of linear-algebra primitives with explicit backward rules: batched matrix multiplication, broadcasting-aware reductions, and a numerically stable softmax. Third, a decoder-only transformer block built from these primitives, with explicit forward and backward passes for scaled dot-product attention~\cite{vaswani2017attention}, including closed-form Jacobians for the Q, K, and V projections. Normalization enters as a toggleable LayerNorm~\cite{ba2016layernorm} layer whose placement (pre-norm, post-norm, or none) is the central variable in our ablation.
+
+As a classical baseline drawn from CS229, we fit \textbf{softmax regression} (multi-class GLM) for next-character prediction using a one-hot context window over the same dataset and tokenizer. This anchors how much attention buys over a linear model studied directly in class.
+
+\section{Intended Experiments}
+We train character-level models on the Tiny Shakespeare corpus ($\sim$1.1MB of text, $\sim$65-character vocabulary), a standard small-scale benchmark for character-level language modeling that fits comfortably on a single GPU. We evaluate along two axes. First, \textbf{benchmarking}: we compare our custom framework against a functionally identical PyTorch transformer and the softmax-regression baseline on validation cross-entropy, held-out perplexity, steps to a perplexity threshold, peak memory, and wallclock per step. The softmax baseline anchors the lower bound; PyTorch anchors the upper bound on implementation efficiency.
+
+Second, the primary experiment is a \textbf{gradient-flow ablation}: we cross LayerNorm placement (pre/post/none) with residual connections on/off and, for each configuration, log per-layer gradient norms, activation norms, and Jacobian singular-value statistics over training. These quantities our from-scratch autograd exposes directly but PyTorch abstracts away. Qualitative generation samples supplement the quantitative results.
+
+\section{Team Contributions}
+\begin{itemize}
+    \item \textbf{Manikanta Harsha Nadimpalli}: autograd engine (reverse-mode DAG over tensors), batched linear-algebra primitives, softmax-regression baseline, PyTorch benchmarking harness.
+    \item \textbf{Luis Blanco Hoyos}: scaled dot-product attention (forward and backward), training loop, gradient-flow ablation instrumentation, and results analysis.
+\end{itemize}
+
+% References
+{\footnotesize
+\begin{thebibliography}{9}
+\bibitem{vaswani2017attention} Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, {\L}., Polosukhin, I. (2017). Attention is all you need. \textit{NeurIPS 30}.
+\bibitem{karpathy2020micrograd} Karpathy, A. (2020). micrograd: A tiny scalar-valued autograd engine. \url{https://github.com/karpathy/micrograd}.
+\bibitem{ba2016layernorm} Ba, J.L., Kiros, J.R., Hinton, G.E. (2016). Layer Normalization. \textit{arXiv:1607.06450}.
+\end{thebibliography}
+}
+% If you don't have a .bib file, you can use the following manual format:
+%\begin{thebibliography}{9}
+%\bibitem{ref1}
+%Author, A. et al. (Year). Title of paper. \textit{Conference/Journal}, pages.
+%
+%\bibitem{ref2}
+%Author, B. et al. (Year). Title of paper. \textit{Conference/Journal}, pages.
+%\end{thebibliography}
+
+\end{document}
