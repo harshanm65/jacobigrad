@@ -33,10 +33,10 @@ dist/
 # Local-only: symlink to iCloud-backed Stanford coursework folder
 /Stanford
 
-# Data and runs
-data/
-runs/
-checkpoints/
-wandb/
+# Data and runs (anchored to repo root so /data/ doesn't shadow src/jacobigrad/data/)
+/data/
+/runs/
+/checkpoints/
+/wandb/
 *.pt
 *.ckpt
