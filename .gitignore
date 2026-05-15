@@ -4,7 +4,8 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-.python-version
+# .python-version is intentionally tracked so the project-pinned interpreter
+# is shared across machines (uv reads it).
 
 # Build artifacts
 build/
