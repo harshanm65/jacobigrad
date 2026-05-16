@@ -19,7 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 torch = ["torch>=2.0"]
-dev = ["pytest>=7", "ruff>=0.4"]
+dev = ["pytest>=7", "ruff>=0.4", "matplotlib>=3.8"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
