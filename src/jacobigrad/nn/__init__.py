@@ -1,3 +1,4 @@
 from jacobigrad.nn.losses import cross_entropy
+from jacobigrad.nn.mlp import CharMLP
 
-__all__ = ["cross_entropy"]
+__all__ = ["CharMLP", "cross_entropy"]
