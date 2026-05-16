@@ -59,7 +59,7 @@ The milestone deliverables described below are the foundation of that instrument
 
 \subsection{First model: char-MLP via our engine} A Bengio-style~\cite{bengio2003neural} character-MLP: previous $T\!=\!3$ characters $\to$ embedding $\mathbb{R}^{V\times d}$ $\to$ flatten $\to$ \texttt{tanh}-hidden $\to$ linear $\to$ cross-entropy on the next character. 8{,}401 trainable parameters; trained end-to-end with our autograd, no torch in the loop.
 
-\subsection{Closed-form attention backward (parallel work, Week-4 spec)} A complete derivation of the scaled-dot-product attention backward — softmax-row Jacobian collapse, batched-matmul fan-in, three projection paths summing into $X$, causal-mask handling — together with a PyTorch reference implementation and four parity tests at \texttt{float64}, \texttt{1e-9} tolerance against \texttt{torch.autograd.grad}. This is the spec we will port into the Tensor engine in the next phase.
+\subsection{Closed-form attention backward} A complete derivation of the scaled-dot-product attention backward — softmax-row Jacobian collapse, batched-matmul fan-in, three projection paths summing into $X$, causal-mask handling — together with a PyTorch reference implementation and four parity tests at \texttt{float64}, \texttt{1e-9} tolerance against \texttt{torch.autograd.grad}. It serves as the specification when scaled-dot-product attention is implemented in our engine.
 
 \section{Preliminary Experiments and Results}
 
@@ -115,7 +115,7 @@ The total project test suite has 103 passing cases.
 
 \begin{enumerate}
 \setlength{\itemsep}{0pt}
-  \item \textbf{Port Luis's closed-form attention backward into the Tensor engine.} The derivation, PyTorch reference, and \texttt{1e-9}-tolerance parity tests already exist (committed under \texttt{tests/reference\_attention.py}); the engine has matmul, log-softmax, and a gather-shaped scatter, which is everything needed. Estimated 2--3 days.
+  \item \textbf{Scaled-dot-product attention, forward and backward,} implemented in our engine using the closed-form Q/K/V projection Jacobians and the softmax-row identity already derived. The Tensor engine has matmul, log-softmax, and gather-shaped scatter, so the backward closures plug directly in. Verified by per-op gradcheck and parity against \texttt{torch.autograd}.
   \item \textbf{LayerNorm forward + backward,} validated by gradcheck and torch parity.
   \item \textbf{Decoder block} with toggleable LayerNorm placement (pre-norm / post-norm / none) and residual on/off — exactly the 6 configurations the ablation grid will sweep.
   \item \textbf{Ablation grid.} Train all 6 configs on Tiny Shakespeare, single seed, identical batches (the data layer's reproducible RNG was built for this). Per-step log: layer-wise $\Vert g \Vert_2$, activation norms, and the singular-value spectrum of layer Jacobians.
@@ -128,8 +128,8 @@ The total project test suite has 103 passing cases.
 
 \begin{itemize}
 \setlength{\itemsep}{0pt}
-  \item \textbf{Manikanta Harsha Nadimpalli:} Tiny Shakespeare data pipeline (loader, tokenizer, batched sampler with reproducibility); three classical baselines (uniform, closed-form Laplace bigram, softmax-regression by SGD with hand-derived gradients); scalar reverse-mode autograd engine with numerical gradient check + PyTorch parity; tensor reverse-mode autograd engine (broadcasting, reductions, matmul, gather, reshape, activations, log-softmax, cross-entropy) with per-op numerical gradient checks and end-to-end PyTorch parity; char-MLP forward and training loop; experiment scripts, results JSONs, figures; this writeup.
-  \item \textbf{Luis Blanco Hoyos:} Closed-form derivation of the scaled-dot-product attention backward (softmax-row Jacobian collapse, batched-matmul fan-in, three-path $X$ contribution, causal-mask handling) in \texttt{writeups/cs229/attention\_backward.md}; PyTorch reference forward and closed-form backward in \texttt{tests/reference\_attention.py}; four \texttt{float64} parity tests at \texttt{1e-9} tolerance against \texttt{torch.autograd}, with and without causal mask. This is the exact specification the Week-4 attention port will be built and tested against.
+  \item \textbf{Manikanta Harsha Nadimpalli:} Tiny Shakespeare data pipeline (loader, tokenizer, batched sampler with reproducibility); three classical baselines (uniform, closed-form Laplace bigram, softmax-regression by SGD with hand-derived gradients); scalar reverse-mode autograd engine with numerical gradient check and PyTorch parity; tensor reverse-mode autograd engine (broadcasting, reductions, matmul, gather, reshape, activations, log-softmax, cross-entropy) with per-op numerical gradient checks and end-to-end PyTorch parity; char-MLP forward and training loop; results, figures, and this writeup.
+  \item \textbf{Luis Blanco Hoyos:} Closed-form derivation of the scaled-dot-product attention backward (softmax-row Jacobian collapse, batched-matmul fan-in, three-path $X$ contribution, causal-mask handling); a PyTorch reference implementation for the forward pass and the closed-form backward; four \texttt{float64} parity tests at \texttt{1e-9} tolerance against \texttt{torch.autograd.grad}, with and without causal mask. This serves as the specification our autograd-engine attention will be built and verified against.
 \end{itemize}
 
 % References
