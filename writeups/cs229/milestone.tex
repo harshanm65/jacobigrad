@@ -82,9 +82,7 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
 \label{tab:results}
 \end{table}
 
-\subsection{Why the MLP wins, and by how much we expected} The bigram is the optimal 2-gram model for this data; SGD on the same parameterization (table softmax-regression) cannot beat it asymptotically. The MLP sits in a strictly larger hypothesis class — it conditions on 3 characters of context and learns a non-linear feature combination via the tanh hidden layer. A 0.20-nat val improvement is in line with what 3-gram-style models achieve on this corpus and confirms the engine's gradients are propagating useful learning signal, not just numerically correct noise.
-
-\begin{figure}[ht]
+\begin{figure}[!t]
   \centering
   \begin{minipage}[t]{0.49\textwidth}
     \centering
@@ -100,6 +98,8 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
   \label{fig:headline}
 \end{figure}
 
+\subsection{Why the MLP wins, and by how much we expected} The bigram is the optimal 2-gram model for this data; SGD on the same parameterization (table softmax-regression) cannot beat it asymptotically. The MLP sits in a strictly larger hypothesis class — it conditions on 3 characters of context and learns a non-linear feature combination via the tanh hidden layer. A 0.20-nat val improvement is in line with what 3-gram-style models achieve on this corpus and confirms the engine's gradients are propagating useful learning signal, not just numerically correct noise.
+
 \subsection{Engine validation} Correctness, not raw performance, is the immediate concern: an undetected gradient bug invalidates every later experiment. We layered three checks:
 \begin{itemize}
 \setlength{\itemsep}{0pt}
@@ -107,7 +107,8 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
   \item \textbf{End-to-end gradcheck on the MLP forward pass}: gradient of the CE loss against all five parameter tensors (\texttt{E}, \texttt{W}$_1$, \texttt{b}$_1$, \texttt{W}$_2$, \texttt{b}$_2$) on randomized inputs.
   \item \textbf{PyTorch parity}: same MLP forward and backward computed in our engine and in \texttt{torch.autograd}; loss bit-identical, all five gradients within $5\!\times\!10^{-17}$ — below \texttt{float64} machine epsilon ($\sim\!2.2\!\times\!10^{-16}$).
 \end{itemize}
-The total project test suite has 103 passing cases.
+The total project test suite has 105 passing cases.
+
 
 \subsection{What the eval pipeline gives us for free} Because \texttt{full\_corpus\_ce} runs over every consecutive bigram pair (rather than a sampled subset), val CE is directly comparable across model classes — bigram counts, SGD-trained logits, and MLP forward all consume the same sequence and report the same mean over the same 111{,}539 positions. The $-0.20$-nat gap in Table~\ref{tab:results} reflects model class, not evaluation noise.
 
