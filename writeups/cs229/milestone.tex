@@ -43,9 +43,9 @@ The milestone deliverables described below are the foundation of that instrument
 
 \section{Methods}
 
-\paragraph{Data and tokenization.} Tiny Shakespeare~\cite{karpathy2015charrnn} (1{,}115{,}394 characters, 65 unique symbols), char-level tokenization. Train/val split is 90/10 \emph{by position}, not random; random char-level shuffling would leak local context across the boundary and inflate val performance. Sampling uses caller-supplied \texttt{np.random.Generator} so every run is reproducible at the seed.
+\subsection{Data and tokenization} Tiny Shakespeare~\cite{karpathy2015charrnn} (1{,}115{,}394 characters, 65 unique symbols), char-level tokenization. Train/val split is 90/10 \emph{by position}, not random; random char-level shuffling would leak local context across the boundary and inflate val performance. Sampling uses caller-supplied \texttt{np.random.Generator} so every run is reproducible at the seed.
 
-\paragraph{Baselines (closed-form and SGD).} Three reference points anchor every later result:
+\subsection{Baselines (closed-form and SGD)} Three reference points anchor every later result:
 \begin{itemize}
 \setlength{\itemsep}{0pt}
   \item \textbf{Uniform predictor.} Cross-entropy floor of $\log V$ nats.
@@ -53,17 +53,17 @@ The milestone deliverables described below are the foundation of that instrument
   \item \textbf{Softmax regression by SGD.} The same model class as the bigram (logits $= W[i] + b$) trained by mini-batch SGD with hand-derived gradients in plain NumPy. Convergence behavior under SGD is itself a sanity check: the SGD trajectory should approach the closed-form CE.
 \end{itemize}
 
-\paragraph{Scalar reverse-mode autograd.} A Karpathy-style~\cite{karpathy2020micrograd} \texttt{Value} class wrapping a Python float. Eight elementary ops (\texttt{+}, \texttt{*}, \texttt{**}, \texttt{relu}, \texttt{tanh}, \texttt{exp}, \texttt{log}, neg/sub/div as compositions). Each forward op installs a closure that captures \texttt{(self, other, out)} and pushes the upstream gradient through its local Jacobian; \texttt{backward()} topologically sorts from the output and walks in reverse. Verified against (i) central differences and (ii) torch.autograd to bit-identical agreement on a randomized two-layer neuron.
+\subsection{Scalar reverse-mode autograd} A Karpathy-style~\cite{karpathy2020micrograd} \texttt{Value} class wrapping a Python float. Eight elementary ops (\texttt{+}, \texttt{*}, \texttt{**}, \texttt{relu}, \texttt{tanh}, \texttt{exp}, \texttt{log}, neg/sub/div as compositions). Each forward op installs a closure that captures \texttt{(self, other, out)} and pushes the upstream gradient through its local Jacobian; \texttt{backward()} topologically sorts from the output and walks in reverse. Verified against (i) central differences and (ii) torch.autograd to bit-identical agreement on a randomized two-layer neuron.
 
-\paragraph{Tensor reverse-mode autograd.} A NumPy-backed \texttt{Tensor} class lifting the same closure pattern to batched arrays. The two genuine complications are broadcasting in backward (collapsed by an \texttt{unbroadcast} helper that sums along broadcast leading axes and size-1 dims) and lazy grad allocation. The op surface is sufficient for the MLP and forward-compatible with attention: elementwise binary/unary with broadcasting, reductions \texttt{sum}/\texttt{mean} (axis + keepdims) with grad re-broadcast, batched matmul (\texttt{@}) with leading-batch fan-in, integer-array gather (the embedding lookup, with \texttt{np.add.at} scatter-add backward), reshape, \texttt{relu}, \texttt{tanh}, numerically stable \texttt{log\_softmax}, and a fused \texttt{cross\_entropy(logits, targets)} whose backward is the closed-form $(\mathrm{softmax}-\text{onehot})/B$. Every op has a numerical-gradient-check test (the non-negotiable Week 2 deliverable from our project plan).
+\subsection{Tensor reverse-mode autograd} A NumPy-backed \texttt{Tensor} class lifting the same closure pattern to batched arrays. The two genuine complications are broadcasting in backward (collapsed by an \texttt{unbroadcast} helper that sums along broadcast leading axes and size-1 dims) and lazy grad allocation. The op surface is sufficient for the MLP and forward-compatible with attention: elementwise binary/unary with broadcasting, reductions \texttt{sum}/\texttt{mean} (axis + keepdims) with grad re-broadcast, batched matmul (\texttt{@}) with leading-batch fan-in, integer-array gather (the embedding lookup, with \texttt{np.add.at} scatter-add backward), reshape, \texttt{relu}, \texttt{tanh}, numerically stable \texttt{log\_softmax}, and a fused \texttt{cross\_entropy(logits, targets)} whose backward is the closed-form $(\mathrm{softmax}-\text{onehot})/B$. Every op has a numerical-gradient-check test (the non-negotiable Week 2 deliverable from our project plan).
 
-\paragraph{First model: char-MLP via our engine.} A Bengio-style~\cite{bengio2003neural} character-MLP: previous $T\!=\!3$ characters $\to$ embedding $\mathbb{R}^{V\times d}$ $\to$ flatten $\to$ \texttt{tanh}-hidden $\to$ linear $\to$ cross-entropy on the next character. 8{,}401 trainable parameters; trained end-to-end with our autograd, no torch in the loop.
+\subsection{First model: char-MLP via our engine} A Bengio-style~\cite{bengio2003neural} character-MLP: previous $T\!=\!3$ characters $\to$ embedding $\mathbb{R}^{V\times d}$ $\to$ flatten $\to$ \texttt{tanh}-hidden $\to$ linear $\to$ cross-entropy on the next character. 8{,}401 trainable parameters; trained end-to-end with our autograd, no torch in the loop.
 
-\paragraph{Closed-form attention backward (parallel work, Week-4 spec).} A complete derivation of the scaled-dot-product attention backward — softmax-row Jacobian collapse, batched-matmul fan-in, three projection paths summing into $X$, causal-mask handling — together with a PyTorch reference implementation and four parity tests at \texttt{float64}, \texttt{1e-9} tolerance against \texttt{torch.autograd.grad}. This is the spec we will port into the Tensor engine in the next phase.
+\subsection{Closed-form attention backward (parallel work, Week-4 spec)} A complete derivation of the scaled-dot-product attention backward — softmax-row Jacobian collapse, batched-matmul fan-in, three projection paths summing into $X$, causal-mask handling — together with a PyTorch reference implementation and four parity tests at \texttt{float64}, \texttt{1e-9} tolerance against \texttt{torch.autograd.grad}. This is the spec we will port into the Tensor engine in the next phase.
 
 \section{Preliminary Experiments and Results}
 
-\paragraph{Headline.} Table~\ref{tab:results} reports validation cross-entropy on Tiny Shakespeare across all four models. The MLP, trained end-to-end through our autograd engine, beats the closed-form bigram floor by 0.20 nats (0.29 bpc, an 18\% reduction in perplexity).
+\subsection{Headline} Table~\ref{tab:results} reports validation cross-entropy on Tiny Shakespeare across all four models. The MLP, trained end-to-end through our autograd engine, beats the closed-form bigram floor by 0.20 nats (0.29 bpc, an 18\% reduction in perplexity).
 
 \begin{table}[ht]
 \centering
@@ -82,7 +82,7 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
 \label{tab:results}
 \end{table}
 
-\paragraph{Why the MLP wins, and by how much we expected.} The bigram is the optimal 2-gram model for this data; SGD on the same parameterization (table softmax-regression) cannot beat it asymptotically. The MLP sits in a strictly larger hypothesis class — it conditions on 3 characters of context and learns a non-linear feature combination via the tanh hidden layer. A 0.20-nat val improvement is in line with what 3-gram-style models achieve on this corpus and confirms the engine's gradients are propagating useful learning signal, not just numerically correct noise.
+\subsection{Why the MLP wins, and by how much we expected} The bigram is the optimal 2-gram model for this data; SGD on the same parameterization (table softmax-regression) cannot beat it asymptotically. The MLP sits in a strictly larger hypothesis class — it conditions on 3 characters of context and learns a non-linear feature combination via the tanh hidden layer. A 0.20-nat val improvement is in line with what 3-gram-style models achieve on this corpus and confirms the engine's gradients are propagating useful learning signal, not just numerically correct noise.
 
 \begin{figure}[ht]
   \centering
@@ -100,7 +100,7 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
   \label{fig:headline}
 \end{figure}
 
-\paragraph{Engine validation.} Correctness, not raw performance, is the immediate concern: an undetected gradient bug invalidates every later experiment. We layered three checks:
+\subsection{Engine validation} Correctness, not raw performance, is the immediate concern: an undetected gradient bug invalidates every later experiment. We layered three checks:
 \begin{itemize}
 \setlength{\itemsep}{0pt}
   \item \textbf{Numerical gradient check} on every op individually (\textit{add}, \textit{mul}, \textit{div}, \textit{pow}, broadcast cases, reductions on every keepdims/axis combo, matmul on three batching patterns, gather with repeated indices, reshape, tanh, relu, log\_softmax, cross\_entropy). Tolerance \texttt{atol=1e-7, rtol=1e-5}; all 59 cases pass.
@@ -109,7 +109,7 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
 \end{itemize}
 The total project test suite has 103 passing cases.
 
-\paragraph{What the eval pipeline gives us for free.} Because \texttt{full\_corpus\_ce} runs over every consecutive bigram pair (rather than a sampled subset), val CE is directly comparable across model classes — bigram counts, SGD-trained logits, and MLP forward all consume the same sequence and report the same mean over the same 111{,}539 positions. The $-0.20$-nat gap in Table~\ref{tab:results} reflects model class, not evaluation noise.
+\subsection{What the eval pipeline gives us for free} Because \texttt{full\_corpus\_ce} runs over every consecutive bigram pair (rather than a sampled subset), val CE is directly comparable across model classes — bigram counts, SGD-trained logits, and MLP forward all consume the same sequence and report the same mean over the same 111{,}539 positions. The $-0.20$-nat gap in Table~\ref{tab:results} reflects model class, not evaluation noise.
 
 \section{Next Steps}
 
