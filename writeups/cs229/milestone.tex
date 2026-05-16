@@ -4,17 +4,17 @@
 \usepackage[preprint,nonatbib]{cs229}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{lmodern}  % Type-1 Latin Modern, avoids missing-bitmap-font errors with [T1]{fontenc} on minimal TeX installs
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
-\usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{amsmath}
 \usepackage{fancyhdr}
 \usepackage{graphicx}
-\usepackage{subcaption}
+\usepackage{caption}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -37,7 +37,7 @@
 \maketitle
 
 \section{Motivation}
-We are building a reverse-mode autograd engine and a small transformer on top of it from scratch in NumPy, with one specific scientific question in mind: \emph{how do LayerNorm placement (pre-norm, post-norm, none) and residual connections shape the gradient signal that reaches the early layers of a decoder-only transformer during training on character-level language modeling?} The from-scratch build is the instrument; the gradient-flow ablation is the contribution. Existing frameworks expose hooks and functional Jacobians, but constructing the engine ourselves gives us conceptual clarity over every chain-rule edge and exact, low-overhead access to per-layer activation and gradient statistics, with no framework internals to reverse-engineer.
+We are building a reverse-mode autograd engine and a small transformer~\cite{vaswani2017attention} on top of it from scratch in NumPy, with one specific scientific question in mind: \emph{how do LayerNorm~\cite{ba2016layernorm} placement (pre-norm, post-norm, none) and residual connections shape the gradient signal that reaches the early layers of a decoder-only transformer during training on character-level language modeling?} The from-scratch build is the instrument; the gradient-flow ablation is the contribution. Existing frameworks expose hooks and functional Jacobians, but constructing the engine ourselves gives us conceptual clarity over every chain-rule edge and exact, low-overhead access to per-layer activation and gradient statistics, with no framework internals to reverse-engineer.
 
 The milestone deliverables described below are the foundation of that instrument: a data pipeline, three classical baselines, a scalar reverse-mode engine, a tensor reverse-mode engine with the full op surface needed for an MLP, and a first non-trivial language model trained end-to-end through our own engine. The ablation grid itself is post-milestone work and tracked under \emph{Next Steps}.
 
@@ -86,17 +86,18 @@ Bigram (closed form, $\alpha=1$) & 2.4819 & 3.5806 & 11.96 \\
 
 \begin{figure}[ht]
   \centering
-  \begin{subfigure}[t]{0.49\textwidth}
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
     \includegraphics[width=\textwidth]{figures/training_curves.pdf}
-    \caption{MLP train+val cross-entropy vs.\ SGD step. Val crosses the bigram floor (dashed green) around step 1700.}
-    \label{fig:train_curve}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.49\textwidth}
+    \captionof*{figure}{(a) MLP train+val CE vs.\ SGD step. Val crosses the bigram floor (dashed green) around step 1700.}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.49\textwidth}
+    \centering
     \includegraphics[width=\textwidth]{figures/baselines_comparison.pdf}
-    \caption{Validation CE across the four reference points. Lower is better.}
-    \label{fig:bars}
-  \end{subfigure}
+    \captionof*{figure}{(b) Val CE across the four reference points. Lower is better.}
+  \end{minipage}
   \caption{Headline results from the engine and baselines.}
+  \label{fig:headline}
 \end{figure}
 
 \paragraph{Engine validation.} Correctness, not raw performance, is the immediate concern: an undetected gradient bug invalidates every later experiment. We layered three checks:
