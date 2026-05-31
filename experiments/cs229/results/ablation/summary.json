@@ -1,0 +1,56 @@
+[
+  {
+    "tag": "pre_res",
+    "norm": "pre",
+    "residual": true,
+    "num_parameters": 211521,
+    "final_val_ce_nats": 1.8439083270766141,
+    "final_val_perplexity": 6.321195344588374,
+    "final_decay_rate": 0.6801189995406375
+  },
+  {
+    "tag": "pre_nores",
+    "norm": "pre",
+    "residual": false,
+    "num_parameters": 211521,
+    "final_val_ce_nats": 3.347366727725498,
+    "final_val_perplexity": 28.42777691956071,
+    "final_decay_rate": 18.643562454709762
+  },
+  {
+    "tag": "post_res",
+    "norm": "post",
+    "residual": true,
+    "num_parameters": 211521,
+    "final_val_ce_nats": 1.7746864909444455,
+    "final_val_perplexity": 5.898431634685367,
+    "final_decay_rate": 0.7149078980743796
+  },
+  {
+    "tag": "post_nores",
+    "norm": "post",
+    "residual": false,
+    "num_parameters": 211521,
+    "final_val_ce_nats": 3.347275389202796,
+    "final_val_perplexity": 28.425180486992137,
+    "final_decay_rate": 30.706057386433642
+  },
+  {
+    "tag": "none_res",
+    "norm": "none",
+    "residual": true,
+    "num_parameters": 210369,
+    "final_val_ce_nats": 1.8511095256287795,
+    "final_val_perplexity": 6.3668798214235185,
+    "final_decay_rate": 0.496950627724191
+  },
+  {
+    "tag": "none_nores",
+    "norm": "none",
+    "residual": false,
+    "num_parameters": 210369,
+    "final_val_ce_nats": 3.3419532583278295,
+    "final_val_perplexity": 28.274299815777226,
+    "final_decay_rate": 2746.5119607005113
+  }
+]
