@@ -1,0 +1,228 @@
+% CS229 Final Project Poster -- 48 x 36 in landscape (beamerposter)
+\documentclass[final]{beamer}
+\usepackage[orientation=landscape,size=custom,width=121.92,height=91.44,scale=1.25]{beamerposter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+% ----------------------------------------------------------------------
+% Colors (Stanford Cardinal palette) + a lightweight block theme.
+% ----------------------------------------------------------------------
+\definecolor{cardinal}{RGB}{140,21,21}
+\definecolor{coolgrey}{RGB}{77,79,83}
+\definecolor{paloalto}{RGB}{0,86,63}
+\definecolor{lightband}{RGB}{244,244,246}
+\definecolor{good}{RGB}{0,110,70}
+\definecolor{bad}{RGB}{170,30,30}
+
+\setbeamercolor{block title}{fg=white,bg=cardinal}
+\setbeamercolor{block body}{fg=black,bg=lightband}
+\setbeamercolor{headline}{fg=white,bg=cardinal}
+\setbeamerfont{block title}{size=\large,series=\bfseries}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{caption}[numbered]
+\setbeamercolor{caption name}{fg=cardinal}
+
+% Tighter blocks with a little breathing room.
+\setbeamertemplate{block begin}{
+  \begin{beamercolorbox}[colsep*=0ex,dp=0.4ex,center]{block title}
+    \vskip0.4ex\usebeamerfont{block title}\insertblocktitle\vskip0.3ex
+  \end{beamercolorbox}
+  \begin{beamercolorbox}[colsep*=0ex,vmode]{block body}
+  \vskip0.6ex\begin{minipage}{0.96\textwidth}}
+\setbeamertemplate{block end}{\end{minipage}\vskip0.6ex\end{beamercolorbox}\vskip1.2ex}
+
+\newcommand{\figdir}{../figures}
+
+% ----------------------------------------------------------------------
+\begin{document}
+\begin{frame}[t]
+
+% ===================== HEADLINE BANNER =====================
+\begin{beamercolorbox}[wd=\paperwidth,sep=0.6cm]{headline}
+\centering
+{\veryHuge\bfseries Micro-Transformer: A From-Scratch Autograd Engine}\\[0.3cm]
+{\Huge\bfseries and a Gradient-Flow Ablation of Normalization \& Residual Connections}\\[0.5cm]
+{\Large Manikanta Harsha Nadimpalli (\texttt{nmharsha}) \quad\textbullet\quad Luis Blanco Hoyos (\texttt{blancol})
+ \quad\textbullet\quad CS229, General Machine Learning}
+\end{beamercolorbox}
+\vspace{0.8cm}
+
+% ===================== THREE COLUMNS =====================
+\begin{columns}[t]
+
+% ---------------------------------------------------------------- COL 1
+\begin{column}{0.315\paperwidth}
+
+\begin{block}{The Question}
+\large
+Residual (skip) connections and LayerNorm are the scaffolding of every
+transformer, usually treated as fixed. We make them the \textbf{object of study}:
+\vskip0.4ex
+\begin{center}\itshape
+How do LayerNorm placement (pre / post / none) and residual connections
+shape the gradient that reaches the \emph{early} layers during training?
+\end{center}
+\vskip0.4ex
+\textbf{Input:} a window of character indices $x_{1:T}$.\quad
+\textbf{Output:} next-char distribution $\hat p(\cdot\mid x_{1:t})$ at every $t$.\\
+We watch not just the loss, but the intermediate gradient
+$\partial L/\partial h_\ell$ at each block.
+\end{block}
+
+\begin{block}{Build It Ourselves $\rightarrow$ Measure Directly}
+\large
+A reverse-mode autograd engine in pure NumPy gives \emph{exact, low-overhead}
+access to per-layer gradients --- no framework hooks to reverse-engineer.
+\vskip0.6ex
+\centering
+\begin{tikzpicture}[
+   node distance=0.55cm,
+   box/.style={draw=cardinal,thick,rounded corners,fill=white,
+               minimum width=10.5cm,minimum height=1.35cm,font=\large},
+   tap/.style={draw=paloalto,thick,rounded corners,fill=paloalto!10,
+               minimum width=10.5cm,minimum height=1.05cm,font=\large},
+   ar/.style={-{Stealth[]},line width=1pt}]
+  \node[box] (emb) {token emb $E$ \;$+$\; positional emb $P$};
+  \node[box,below=of emb] (b1) {DecoderBlock $\times\,N$ \;(toggles: norm, residual)};
+  \node[tap,below=of b1] (tap) {tap $h_\ell$ \;$\Rightarrow$\; record $\|\partial L/\partial h_\ell\|_2$};
+  \node[box,below=of tap] (head) {final LayerNorm $\rightarrow$ linear head $\rightarrow$ logits};
+  \draw[ar] (emb) -- (b1);
+  \draw[ar] (b1) -- (tap);
+  \draw[ar] (tap) -- (head);
+\end{tikzpicture}
+\vskip0.6ex
+\raggedright\large
+Validated to \textbf{machine precision} ($\sim\!10^{-10}$--$10^{-16}$) at every
+layer vs.\ finite differences and a PyTorch oracle. \textbf{164 passing tests.}
+PyTorch is used \emph{only} as a test oracle, never in the model.
+\end{block}
+
+\begin{block}{The Six-Cell Grid}
+\large
+3 norm placements $\times$ 2 residual settings, trained \emph{identically}
+(same seed, data, AdamW, 2000 steps) so the only variable is the toggle.
+\vskip0.4ex
+\centering
+\begin{tabular}{l|ccc}
+\toprule
+ & \textbf{pre} & \textbf{post} & \textbf{none} \\
+\midrule
+\textbf{residual on}  & $x{+}f(\mathrm{LN}\,x)$ & $\mathrm{LN}(x{+}f x)$ & $x{+}f x$ \\
+\textbf{residual off} & $f(\mathrm{LN}\,x)$ & $\mathrm{LN}(f x)$ & $f x$ \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\end{column}
+
+% ---------------------------------------------------------------- COL 2
+\begin{column}{0.34\paperwidth}
+
+\begin{block}{Hero Result: Per-Layer Gradient Norm}
+\centering
+\includegraphics[width=0.99\textwidth]{\figdir/gradflow_heatmap.pdf}
+\vskip0.4ex
+\raggedright\large
+End-of-training gradient norm by depth ($\log_{10}$). \textbf{Residual-on}
+(left 3 cols) stays $O(10^{-2})$ at every layer; \textbf{residual-off}
+vanishes toward the input --- \texttt{none/no-res} is \emph{exactly zero} in
+layers 0--2, so those layers never learn.
+\end{block}
+
+\begin{block}{Training Stability}
+\centering
+\includegraphics[width=0.92\textwidth]{\figdir/ablation_curves.pdf}
+\vskip0.3ex
+\raggedright\large
+The three residual-on configs converge together near \textbf{1.8 nats};
+the three residual-off configs plateau near \textbf{3.3}.
+\end{block}
+
+\begin{block}{Engine Validation Ladder}
+\large
+\begin{tabular}{ll}
+\toprule
+Component & Parity \\
+\midrule
+Every primitive op & finite diff, \texttt{atol 1e-7} \\
+Attention backward & torch / closed form, $10^{-10}$ \\
+LayerNorm & \texttt{torch.nn.LayerNorm}, $5{\times}10^{-16}$ \\
+Decoder block & torch reconstruction, $10^{-10}$ \\
+AdamW (25 steps) & \texttt{torch.optim.AdamW}, $10^{-10}$ \\
+\bottomrule
+\end{tabular}
+\end{block}
+
+\end{column}
+
+% ---------------------------------------------------------------- COL 3
+\begin{column}{0.315\paperwidth}
+
+\begin{block}{Results: Residual Decides, Not Norm}
+\large
+\centering
+\begin{tabular}{ll r r}
+\toprule
+Norm & Res & Val CE & Decay $\rho$ \\
+\midrule
+post & on  & \textbf{\textcolor{good}{1.775}} & 0.71 \\
+pre  & on  & \textcolor{good}{1.844} & 0.68 \\
+none & on  & \textcolor{good}{1.851} & 0.50 \\
+\midrule
+pre  & off & \textcolor{bad}{3.347} & 18.6 \\
+post & off & \textcolor{bad}{3.347} & 30.7 \\
+none & off & \textcolor{bad}{3.342} & 2746 \\
+\bottomrule
+\end{tabular}
+\vskip0.5ex
+\raggedright\large
+Decay rate $\rho=(\|g_{\text{last}}\|/\|g_{\text{first}}\|)^{1/(L-1)}$:
+$\rho\!\approx\!1$ preserves the gradient, $\rho\!\gg\!1$ vanishes it.
+Baselines for scale: uniform 4.17, bigram floor 2.48, char-MLP 2.28 nats.
+\end{block}
+
+\begin{block}{The Takeaway}
+\Large
+\centering
+At depth 4, the \textbf{\textcolor{cardinal}{residual connection is the
+decisive factor}} --- not normalization placement.
+\vskip0.5ex
+\raggedright\large
+\textbf{With} a skip, the gradient gets an identity path to the input and
+stays $O(1)$ across depth; \textbf{all} norm placements then train and beat
+the bigram floor. \textbf{Without} it, the gradient must cross every sublayer
+Jacobian and decays geometrically --- early layers go untrainable regardless
+of norm. Pre- vs.\ post-norm is a \emph{second-order} effect at this scale
+(the known pre-norm advantage emerges deeper, without an adaptive optimizer).
+\end{block}
+
+\begin{block}{Scope, Limits \& Next Steps}
+\large
+Single seed/cell, single-head, one corpus, depth 4 --- so post-vs-pre is
+``comparable,'' not a ranking. \textbf{Next:} multi-seed error bars, greater
+depth (where pre/post diverges), multi-head, and Jacobian singular-value
+spectra.
+\end{block}
+
+\begin{block}{Contributions \& Code}
+\large
+\textbf{Harsha:} data, baselines, scalar+tensor autograd, attention/LayerNorm/
+block/transformer in-engine, AdamW, instrumentation, ablation, writeups.\\
+\textbf{Luis:} closed-form attention-backward derivation + PyTorch oracle +
+parity tests (the independent spec our engine is verified against).
+\vskip0.4ex
+\centering\large
+\texttt{github.com/harshanm65/jacobigrad}
+\end{block}
+
+\end{column}
+
+\end{columns}
+\end{frame}
+\end{document}
