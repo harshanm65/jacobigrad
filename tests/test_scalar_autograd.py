@@ -31,8 +31,10 @@ def grad_check(value_fn, float_fn, xs, eps: float = 1e-5, atol: float = 1e-5):
 
     numerical = []
     for i in range(len(xs)):
-        plus = list(xs); plus[i] += eps
-        minus = list(xs); minus[i] -= eps
+        plus = list(xs)
+        plus[i] += eps
+        minus = list(xs)
+        minus[i] -= eps
         numerical.append((float_fn(*plus) - float_fn(*minus)) / (2 * eps))
 
     for i, (a, n) in enumerate(zip(analytic, numerical)):

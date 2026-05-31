@@ -70,8 +70,10 @@ def test_loss_and_grads_match_finite_differences():
     eps = 1e-5
     for i in range(V):
         for j in range(V):
-            Wp = W.copy(); Wp[i, j] += eps
-            Wm = W.copy(); Wm[i, j] -= eps
+            Wp = W.copy()
+            Wp[i, j] += eps
+            Wm = W.copy()
+            Wm[i, j] -= eps
             lp, _, _ = loss_and_grads(Wp, b, x_ids, y_ids)
             lm, _, _ = loss_and_grads(Wm, b, x_ids, y_ids)
             num = (lp - lm) / (2 * eps)
@@ -80,8 +82,10 @@ def test_loss_and_grads_match_finite_differences():
             )
 
     for j in range(V):
-        bp = b.copy(); bp[j] += eps
-        bm = b.copy(); bm[j] -= eps
+        bp = b.copy()
+        bp[j] += eps
+        bm = b.copy()
+        bm[j] -= eps
         lp, _, _ = loss_and_grads(W, bp, x_ids, y_ids)
         lm, _, _ = loss_and_grads(W, bm, x_ids, y_ids)
         num = (lp - lm) / (2 * eps)
