@@ -527,6 +527,77 @@ def test_grad_log_softmax_axis_zero():
 
 
 # ----------------------------------------------------------------------
+# transpose (batched last-two-axis swap, for attention's Q @ K^T).
+# ----------------------------------------------------------------------
+
+
+def test_transpose_forward_swaps_last_two_axes():
+    rng = np.random.default_rng(0)
+    a = Tensor(rng.normal(size=(2, 3, 4)))
+    t = a.transpose(-2, -1)
+    assert t.shape == (2, 4, 3)
+    np.testing.assert_array_equal(t.data, np.swapaxes(a.data, -2, -1))
+
+
+def test_grad_transpose():
+    rng = np.random.default_rng(0)
+    a = _rand_tensor(rng, 2, 3, 4)
+    _check_op_with_explicit_grad(lambda ps: ps[0].transpose(-2, -1), [a])
+
+
+def test_grad_transpose_then_matmul():
+    # The actual attention usage: Q @ K^T contracts over the feature dim.
+    rng = np.random.default_rng(1)
+    Q = _rand_tensor(rng, 2, 5, 3)
+    K = _rand_tensor(rng, 2, 5, 3)
+    numgrad_check(lambda ps: (ps[0] @ ps[1].transpose(-2, -1)).sum(), [Q, K])
+
+
+# ----------------------------------------------------------------------
+# softmax (probabilities; the full softmax-row Jacobian collapse).
+# ----------------------------------------------------------------------
+
+
+def test_softmax_forward_sums_to_one():
+    rng = np.random.default_rng(0)
+    a = Tensor(rng.normal(size=(5, 7)))
+    p = a.softmax(axis=-1)
+    np.testing.assert_allclose(p.data.sum(axis=-1), np.ones(5), atol=1e-12)
+    assert np.all(p.data > 0)
+
+
+def test_softmax_forward_matches_log_softmax():
+    rng = np.random.default_rng(0)
+    a = Tensor(rng.normal(size=(4, 6)))
+    np.testing.assert_allclose(a.softmax(axis=-1).data, np.exp(a.log_softmax(axis=-1).data), atol=1e-12)
+
+
+def test_softmax_numerically_stable():
+    a = Tensor([[1000.0, 1001.0, 1002.0]])
+    p = a.softmax(axis=-1)
+    assert np.all(np.isfinite(p.data))
+    np.testing.assert_allclose(p.data.sum(), 1.0, atol=1e-12)
+
+
+def test_grad_softmax_axis_minus_one():
+    rng = np.random.default_rng(0)
+    a = _rand_tensor(rng, 4, 6)
+    _check_op_with_explicit_grad(lambda ps: ps[0].softmax(axis=-1), [a])
+
+
+def test_grad_softmax_axis_minus_one_batched():
+    rng = np.random.default_rng(2)
+    a = _rand_tensor(rng, 2, 4, 5)
+    _check_op_with_explicit_grad(lambda ps: ps[0].softmax(axis=-1), [a])
+
+
+def test_grad_softmax_axis_zero():
+    rng = np.random.default_rng(0)
+    a = _rand_tensor(rng, 4, 6)
+    _check_op_with_explicit_grad(lambda ps: ps[0].softmax(axis=0), [a])
+
+
+# ----------------------------------------------------------------------
 # Cross-entropy (the fused softmax + NLL loss).
 # ----------------------------------------------------------------------
 

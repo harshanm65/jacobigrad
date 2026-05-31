@@ -247,6 +247,22 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def transpose(self, axis1: int = -2, axis2: int = -1) -> "Tensor":
+        """Swap two axes (default: the last two — a batched matrix transpose).
+
+        Needed for attention's ``Q @ K^T``: the matmul op multiplies the last
+        two axes, so transposing ``K`` is how we contract over the feature dim.
+        ``swapaxes`` is its own inverse for a given axis pair, so the backward
+        just swaps the upstream grad back.
+        """
+        out = Tensor(np.swapaxes(self.data, axis1, axis2), (self,), f"transpose({axis1},{axis2})")
+
+        def _backward() -> None:
+            self._add_grad(np.swapaxes(out.grad, axis1, axis2))
+
+        out._backward = _backward
+        return out
+
     # ------------------------------------------------------------------
     # Activations and the (numerically stable) log-softmax.
     # ------------------------------------------------------------------
@@ -292,6 +308,33 @@ class Tensor:
         def _backward() -> None:
             p = np.exp(log_p)
             self._add_grad(out.grad - p * out.grad.sum(axis=axis, keepdims=True))
+
+        out._backward = _backward
+        return out
+
+    def softmax(self, axis: int = -1) -> "Tensor":
+        """Numerically stable softmax along ``axis``, returning probabilities.
+
+        ``log_softmax`` already covers cross-entropy, but attention needs the
+        probabilities themselves (the attention weights ``A`` that multiply
+        ``V``). The backward is the full softmax-row Jacobian collapse — the
+        same identity Luis derived for attention (``attention_backward.md``):
+
+            with ``a = softmax(x)``,   ``da_j/dx_i = a_j (delta_ij - a_i)``
+            ==> ``dL/dx_i = a_i * (dL/da_i - <a, dL/da>)``
+
+        The dot product ``<a, dL/da>`` is one scalar shared across the row, so
+        the same softmax-weighted correction is subtracted at every position.
+        """
+        m = self.data.max(axis=axis, keepdims=True)
+        e = np.exp(self.data - m)
+        a = e / e.sum(axis=axis, keepdims=True)
+        out = Tensor(a, (self,), f"softmax(axis={axis})")
+
+        def _backward() -> None:
+            # row-weighted correction: a * (g - sum(a * g))
+            dot = (a * out.grad).sum(axis=axis, keepdims=True)
+            self._add_grad(a * (out.grad - dot))
 
         out._backward = _backward
         return out
